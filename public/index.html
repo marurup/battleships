@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Slagskibe">
+  <title>Sænke Slagskibe</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- MENU SCREEN -->
+    <div id="screen-menu" class="screen active">
+      <div class="screen-content center">
+        <div class="logo">
+          <div class="logo-icon">⚓</div>
+          <h1>Sænke<br>Slagskibe</h1>
+        </div>
+        <div class="menu-buttons">
+          <button class="btn btn-primary btn-large" onclick="App.selectMode('ai')">
+            🤖 Spil mod Computer
+          </button>
+          <button class="btn btn-secondary btn-large" onclick="App.selectMode('local')">
+            📱 Lokal Multiplayer
+            <small>Skift enhed imellem hinanden</small>
+          </button>
+          <button class="btn btn-secondary btn-large" onclick="App.selectMode('online')">
+            🌐 Online Multiplayer
+            <small>Hver spiller på sin enhed</small>
+          </button>
+        </div>
+        <div class="menu-footer">
+          <span id="install-btn" class="link-btn hidden" onclick="App.installPWA()">📲 Installer app</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAME ENTRY SCREEN -->
+    <div id="screen-names" class="screen">
+      <div class="screen-content center">
+        <h2 id="names-title">Spillernavne</h2>
+        <div class="form-group">
+          <label>Spiller 1</label>
+          <input id="name1" type="text" class="input" placeholder="Dit navn" maxlength="20" autocomplete="off">
+        </div>
+        <div id="name2-group" class="form-group hidden">
+          <label>Spiller 2</label>
+          <input id="name2" type="text" class="input" placeholder="Modstanderens navn" maxlength="20" autocomplete="off">
+        </div>
+        <div id="difficulty-group" class="form-group hidden">
+          <label>Sværhedsgrad</label>
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="difficulty" value="easy"> Let
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="difficulty" value="medium" checked> Medium
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="difficulty" value="hard"> Svær
+            </label>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="App.showMenu()">← Tilbage</button>
+          <button class="btn btn-primary" onclick="App.submitNames()">Fortsæt →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONLINE SETUP SCREEN -->
+    <div id="screen-online-setup" class="screen">
+      <div class="screen-content center">
+        <h2>Online Multiplayer</h2>
+        <div class="online-tabs">
+          <button class="tab-btn active" onclick="App.onlineTab('create')" id="tab-create">Opret spil</button>
+          <button class="tab-btn" onclick="App.onlineTab('join')" id="tab-join">Deltag i spil</button>
+        </div>
+        <div id="online-create" class="tab-content">
+          <p class="info-text">Opret et nyt rum og del koden med din modstander.</p>
+          <div class="form-group">
+            <label>Dit navn</label>
+            <input id="online-name-create" type="text" class="input" placeholder="Dit navn" maxlength="20" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" onclick="App.createRoom()">Opret rum</button>
+        </div>
+        <div id="online-join" class="tab-content hidden">
+          <p class="info-text">Indtast rumkoden fra din modstander.</p>
+          <div class="form-group">
+            <label>Dit navn</label>
+            <input id="online-name-join" type="text" class="input" placeholder="Dit navn" maxlength="20" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Rumkode</label>
+            <input id="room-code-input" type="text" class="input input-code" placeholder="XXXXXX" maxlength="6" autocomplete="off"
+              oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <button class="btn btn-primary" onclick="App.joinRoom()">Deltag</button>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="App.showMenu()">← Tilbage</button>
+        </div>
+        <div id="online-error" class="error-msg hidden"></div>
+      </div>
+    </div>
+
+    <!-- WAITING SCREEN -->
+    <div id="screen-waiting" class="screen">
+      <div class="screen-content center">
+        <div class="spinner">⚓</div>
+        <h2 id="waiting-title">Venter på modstander...</h2>
+        <div id="room-code-display" class="room-code-box hidden">
+          <p>Del denne kode med din modstander:</p>
+          <div id="room-code-value" class="room-code"></div>
+          <button class="btn btn-ghost btn-small" onclick="App.copyRoomCode()">📋 Kopiér kode</button>
+        </div>
+        <button class="btn btn-ghost" onclick="App.showMenu()">Annuller</button>
+      </div>
+    </div>
+
+    <!-- PASS SCREEN (pass-and-play) -->
+    <div id="screen-pass" class="screen">
+      <div class="screen-content center">
+        <div class="pass-icon">🔄</div>
+        <h2 id="pass-title">Giv enheden videre</h2>
+        <p id="pass-message"></p>
+        <button class="btn btn-primary btn-large" onclick="App.readyAfterPass()">Jeg er klar! 👁️</button>
+      </div>
+    </div>
+
+    <!-- SHIP PLACEMENT SCREEN -->
+    <div id="screen-placement" class="screen">
+      <div class="placement-header">
+        <h2 id="placement-title">Placer dine skibe</h2>
+        <div class="placement-controls">
+          <button class="btn btn-rotate" id="rotate-btn" onclick="App.toggleRotation()">
+            🔄 <span id="rotate-label">Vandret</span>
+          </button>
+          <button class="btn btn-ghost btn-small" onclick="App.randomPlacement()">🎲 Tilfældig</button>
+          <button class="btn btn-ghost btn-small" onclick="App.clearPlacement()">🗑️ Ryd</button>
+        </div>
+      </div>
+      <div id="placement-hint" class="placement-hint"></div>
+      <div class="placement-content">
+        <div class="ship-list" id="ship-list"></div>
+        <div class="board-wrap">
+          <div id="placement-board" class="board"></div>
+        </div>
+      </div>
+      <div class="placement-footer">
+        <button class="btn btn-primary" id="placement-done-btn" onclick="App.donePlacing()" disabled>
+          Klar til kamp! ⚔️
+        </button>
+      </div>
+    </div>
+
+    <!-- BATTLE SCREEN -->
+    <div id="screen-battle" class="screen">
+      <div class="battle-header">
+        <div class="player-turn" id="turn-indicator"></div>
+        <div class="battle-stats" id="battle-stats"></div>
+      </div>
+      <div class="battle-boards" id="battle-boards">
+        <!-- Mobile tabs -->
+        <div class="board-tabs" id="board-tabs">
+          <button class="tab-btn active" id="tab-attack" onclick="App.battleTab('attack')">⚔️ Angrib</button>
+          <button class="tab-btn" id="tab-defend" onclick="App.battleTab('defend')">🛡️ Min flåde</button>
+        </div>
+        <div class="board-section" id="section-attack">
+          <h3 id="attack-board-label">Modstanderens hav</h3>
+          <div id="enemy-board" class="board board-attack"></div>
+        </div>
+        <div class="board-section hidden" id="section-defend">
+          <h3 id="defend-board-label">Dit hav</h3>
+          <div id="own-board" class="board board-defend"></div>
+        </div>
+      </div>
+      <div id="battle-message" class="battle-message hidden"></div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="screen-gameover" class="screen">
+      <div class="screen-content center">
+        <div class="winner-animation" id="winner-emoji">🏆</div>
+        <h2 id="winner-text">Spiller 1 vandt!</h2>
+        <p id="gameover-detail"></p>
+        <div class="gameover-boards" id="gameover-boards"></div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="App.showMenu()">🏠 Hovedmenu</button>
+          <button class="btn btn-primary" onclick="App.playAgain()">🔄 Spil igen</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- #app -->
+
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
