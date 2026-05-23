@@ -395,7 +395,7 @@ label {
 .ship-item.placed { opacity: 0.45; cursor: not-allowed; }
 
 .ship-name { font-weight: 600; color: var(--text); }
-.ship-preview {
+.ship-preview-strip {
   display: flex;
   gap: 2px;
 }
@@ -424,8 +424,7 @@ label {
 /* ===== GAME BOARD ===== */
 .board {
   display: grid;
-  grid-template-columns: var(--board-label) repeat(10, var(--cell-size));
-  grid-template-rows: var(--board-label) repeat(10, var(--cell-size));
+  /* grid-template-columns/rows set inline by renderBoard() for variable map sizes */
   gap: 2px;
   user-select: none;
 }
@@ -463,11 +462,33 @@ label {
 .cell.ship { overflow: visible; z-index: 1; }
 
 /* Ship type colors */
-.cell.ship-carrier    { background: #455a64; }
-.cell.ship-battleship { background: #37474f; }
-.cell.ship-cruiser    { background: #546e7a; }
-.cell.ship-submarine  { background: #1a3540; }
-.cell.ship-destroyer  { background: #607d8b; }
+.cell.ship-dreadnought { background: #263238; }
+.cell.ship-carrier     { background: #455a64; }
+.cell.ship-battleship  { background: #37474f; }
+.cell.ship-cruiser     { background: #546e7a; }
+.cell.ship-submarine   { background: #1a3540; }
+.cell.ship-destroyer   { background: #607d8b; }
+.cell.ship-frigate     { background: #78909c; }
+
+/* Blocked / island cells */
+.cell.blocked {
+  background: #1e4020;
+  cursor: default;
+  pointer-events: none;
+}
+.cell.blocked::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px,
+    rgba(80,160,60,0.07) 2px, rgba(80,160,60,0.07) 6px
+  );
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+}
 
 /* Bow / stern shaping */
 .cell.ship-h.ship-bow   { border-radius: 45% 4px 4px 45%; }
@@ -688,6 +709,76 @@ label {
   .screen-content { padding-top: max(24px, env(safe-area-inset-top)); }
   .placement-footer { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .battle-message { bottom: max(20px, env(safe-area-inset-bottom)); }
+}
+
+/* ===== MAP SELECT ===== */
+#screen-mapselect { overflow-y: auto; }
+
+.map-select-header {
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.map-select-header h2 { text-align: left; font-size: 18px; margin: 0; }
+
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.map-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.1s;
+  display: flex;
+  flex-direction: column;
+}
+.map-card:hover  { border-color: var(--accent); transform: scale(1.03); }
+.map-card:active { transform: scale(0.98); }
+
+.map-preview {
+  display: grid;
+  gap: 1px;
+  padding: 8px 8px 4px;
+  background: #06111f;
+  width: 100%;
+}
+.mp-water   { background: var(--water); aspect-ratio: 1; border-radius: 1px; }
+.mp-blocked { background: #2d5a1b;      aspect-ratio: 1; border-radius: 1px; }
+
+.map-info { padding: 6px 10px 10px; }
+.map-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.map-size { font-size: 11px; color: var(--accent); margin-top: 2px; font-weight: 600; }
+.map-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+
+/* ===== DYNAMIC BOARD CELL SIZING =====
+   --cell-size is overridden per board width via data-cols attribute.
+   Gameover boards use inline --cell-size:22px which takes priority. */
+@media (min-width: 700px) {
+  .board[data-cols="8"]  { --cell-size: 50px; }
+  .board[data-cols="12"] { --cell-size: 34px; }
+  .board[data-cols="14"] { --cell-size: 28px; }
+}
+@media (min-width: 900px) {
+  .board[data-cols="8"]  { --cell-size: 54px; }
+  .board[data-cols="12"] { --cell-size: 37px; }
+  .board[data-cols="14"] { --cell-size: 31px; }
+}
+@media (max-width: 699px) {
+  .board[data-cols="8"]  { --cell-size: min(40px, 10vw); }
+  .board[data-cols="12"] { --cell-size: min(28px, 7vw); }
+  .board[data-cols="14"] { --cell-size: min(22px, 5.5vw); }
 }
 
 /* ===== SCROLLBAR ===== */

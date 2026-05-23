@@ -1,4 +1,4 @@
-const CACHE = 'battleships-v1';
+const CACHE = 'battleships-v2';
 // Use scope so paths work both on localhost and GitHub Pages (/battleships/)
 const BASE = self.registration.scope;
 

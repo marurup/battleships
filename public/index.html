@@ -43,6 +43,15 @@
       </div>
     </div>
 
+    <!-- MAP SELECT SCREEN -->
+    <div id="screen-mapselect" class="screen">
+      <div class="map-select-header">
+        <button class="btn btn-ghost btn-small" onclick="App.showMenu()">← Tilbage</button>
+        <h2>Vælg bane</h2>
+      </div>
+      <div class="map-grid" id="map-grid"></div>
+    </div>
+
     <!-- NAME ENTRY SCREEN -->
     <div id="screen-names" class="screen">
       <div class="screen-content center">
@@ -70,7 +79,7 @@
           </div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-ghost" onclick="App.showMenu()">← Tilbage</button>
+          <button class="btn btn-ghost" onclick="App.selectMode(State.mode)">← Tilbage</button>
           <button class="btn btn-primary" onclick="App.submitNames()">Fortsæt →</button>
         </div>
       </div>
@@ -106,7 +115,7 @@
           <button class="btn btn-primary" onclick="App.joinRoom()">Deltag</button>
         </div>
         <div class="btn-row">
-          <button class="btn btn-ghost" onclick="App.showMenu()">← Tilbage</button>
+          <button class="btn btn-ghost" onclick="App.selectMode(State.mode)">← Tilbage</button>
         </div>
         <div id="online-error" class="error-msg hidden"></div>
       </div>

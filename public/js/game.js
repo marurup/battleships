@@ -1,15 +1,159 @@
 'use strict';
 
 // ===== CONSTANTS =====
-const GRID = 10;
-const COLS = 'ABCDEFGHIJ';
+const COLS_ALL = 'ABCDEFGHIJKLMN';
 
-const SHIPS_DEF = [
-  { id: 'carrier',    name: 'Hangarskib', size: 5 },
-  { id: 'battleship', name: 'Slagskib',   size: 4 },
-  { id: 'cruiser',    name: 'Krydser',    size: 3 },
-  { id: 'submarine',  name: 'Ubåd',       size: 3 },
-  { id: 'destroyer',  name: 'Destroyer',  size: 2 },
+const SHIP_TYPES = {
+  dreadnought: { id: 'dreadnought', name: 'Slagkrydser',  size: 6 },
+  carrier:     { id: 'carrier',     name: 'Hangarskib',   size: 5 },
+  battleship:  { id: 'battleship',  name: 'Slagskib',     size: 4 },
+  cruiser:     { id: 'cruiser',     name: 'Krydser',      size: 3 },
+  submarine:   { id: 'submarine',   name: 'Ubåd',         size: 3 },
+  destroyer:   { id: 'destroyer',   name: 'Destroyer',    size: 2 },
+  frigate:     { id: 'frigate',     name: 'Fregat',       size: 2 },
+};
+
+const ST = SHIP_TYPES;
+
+const MAPS = [
+  {
+    id: 'open-sea',
+    name: 'Åbent Hav',
+    desc: 'Klassisk kamp på åbent hav',
+    rows: 10, cols: 10,
+    blocked: [],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'small-lake',
+    name: 'Lille Sø',
+    desc: 'Tæt kamp på en lille sø',
+    rows: 8, cols: 8,
+    blocked: [],
+    ships: [ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'arctic',
+    name: 'Arktis',
+    desc: 'Isørkener og frosne farvande',
+    rows: 10, cols: 10,
+    blocked: [
+      [0,0],[1,0],[0,1],
+      [0,9],[0,8],[1,9],
+      [9,0],[8,0],[9,1],
+      [9,9],[9,8],[8,9],
+      [4,4],[4,5],[5,4],[5,5],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'island-sea',
+    name: 'Øhav',
+    desc: 'Spredte øer gør det vanskeligt',
+    rows: 10, cols: 10,
+    blocked: [
+      [1,5],[2,2],[2,7],[4,1],[4,8],[5,5],[7,3],[7,7],[8,1],[8,8],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'channel',
+    name: 'Kanalen',
+    desc: 'Smalt farvand — bred og kort bane',
+    rows: 8, cols: 14,
+    blocked: [
+      [2,4],[2,5],[2,6],[2,7],[2,8],[2,9],
+      [5,4],[5,5],[5,6],[5,7],[5,8],[5,9],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'great-sea',
+    name: 'Storhavet',
+    desc: 'Enormt hav — seks skibe i kamp',
+    rows: 12, cols: 12,
+    blocked: [
+      [2,2],[2,9],[5,5],[5,6],[6,5],[6,6],[9,2],[9,9],
+    ],
+    ships: [ST.dreadnought, ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'minefield',
+    name: 'Minestræde',
+    desc: 'Indsnævrede løb med minefelter',
+    rows: 10, cols: 10,
+    blocked: [
+      [1,3],[2,3],[3,3],[4,3],[5,3],[6,3],
+      [3,6],[4,6],[5,6],[6,6],[7,6],[8,6],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'coral-reef',
+    name: 'Koralrev',
+    desc: 'Farverige rev skjuler farerne',
+    rows: 10, cols: 12,
+    blocked: [
+      [1,2],[1,3],[2,2],
+      [1,9],[2,8],[2,9],
+      [4,5],[4,6],[5,5],
+      [6,9],[7,8],[7,9],
+      [8,3],[8,4],[9,4],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'polar',
+    name: 'Polarekspedition',
+    desc: 'Enorm isblok i midten — lille flåde',
+    rows: 8, cols: 8,
+    blocked: [
+      [2,2],[2,3],[2,4],[2,5],
+      [3,2],[3,3],[3,4],[3,5],
+      [4,2],[4,3],[4,4],[4,5],
+      [5,2],[5,3],[5,4],[5,5],
+    ],
+    ships: [ST.cruiser, ST.submarine, ST.destroyer, ST.frigate],
+  },
+  {
+    id: 'delta',
+    name: 'Deltaet',
+    desc: 'Floddeltaets grene deler havet',
+    rows: 10, cols: 12,
+    blocked: [
+      [0,5],[0,6],[1,5],[1,6],
+      [2,4],[2,7],
+      [3,3],[3,8],
+      [4,3],[4,8],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
+  {
+    id: 'titans',
+    name: 'Titanernes Hav',
+    desc: 'Syv skibe på et enormt slagmark',
+    rows: 12, cols: 14,
+    blocked: [
+      [3,5],[3,6],[3,7],[3,8],
+      [8,5],[8,6],[8,7],[8,8],
+      [5,11],[6,11],[7,11],
+      [5,2],[6,2],[7,2],
+    ],
+    ships: [ST.dreadnought, ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer, ST.frigate],
+  },
+  {
+    id: 'labyrinth',
+    name: 'Labyrinten',
+    desc: 'Snørklede gange — find vej til sejr',
+    rows: 10, cols: 10,
+    blocked: [
+      [2,1],[2,2],[2,3],[2,4],
+      [4,5],[4,6],[4,7],[4,8],[4,9],
+      [6,0],[6,1],[6,2],[6,3],[6,4],
+      [8,4],[8,5],[8,6],[8,7],[8,8],
+    ],
+    ships: [ST.carrier, ST.battleship, ST.cruiser, ST.submarine, ST.destroyer],
+  },
 ];
 
 // ===== STATE =====
@@ -17,35 +161,49 @@ const State = {
   mode: null,           // 'ai' | 'local' | 'online'
   phase: null,          // 'placement' | 'battle' | 'gameover'
   difficulty: 'medium',
-  players: [],          // [{name, board, ships, shots}]
-  current: 0,           // index of player whose turn it is (0 or 1)
-  placing: 0,           // which player is currently placing ships
+  map: null,            // currently selected MAPS entry
+  shipDefs: [],         // ships for this game (from map)
+  players: [],          // [{name, board}]
+  current: 0,
+  placing: 0,
   online: {
     connected: false,
     roomCode: null,
     myIndex: null,
   },
-  placingShip: null,    // currently selected ship for placement
-  horizontal: true,     // placement orientation
+  placingShip: null,
+  horizontal: true,
   passAfterPlace: false,
   battleTab: 'attack',
-  lastShot: null,       // { row, col, hit, boardId } — for flash animation
+  lastShot: null,       // { row, col, hit, boardId }
 };
 
 // ===== BOARD =====
-function makeBoard() {
-  return {
-    grid: Array.from({ length: GRID }, () => Array(GRID).fill(null)),
-    ships: [],
-    shots: [],
-  };
+function makeBoard(map) {
+  const { rows, cols } = map;
+  const blocked = map.blocked || [];
+  const blockedSet = new Set(blocked.map(([r, c]) => `${r},${c}`));
+  const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+  for (const [r, c] of blocked) grid[r][c] = 'blocked';
+  return { rows, cols, blocked, blockedSet, grid, ships: [], shots: [] };
+}
+
+function resetBoardGrid(board) {
+  const { rows, cols } = board;
+  board.grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+  for (const [r, c] of board.blocked) board.grid[r][c] = 'blocked';
+}
+
+function isBlocked(board, r, c) {
+  return board.blockedSet.has(`${r},${c}`);
 }
 
 function canPlaceShip(board, shipDef, row, col, horiz) {
+  const { rows, cols } = board;
   for (let i = 0; i < shipDef.size; i++) {
     const r = horiz ? row : row + i;
     const c = horiz ? col + i : col;
-    if (r < 0 || r >= GRID || c < 0 || c >= GRID) return false;
+    if (r < 0 || r >= rows || c < 0 || c >= cols) return false;
     if (board.grid[r][c] !== null) return false;
   }
   return true;
@@ -80,8 +238,8 @@ function removeShip(board, shipId) {
 }
 
 function shootAt(board, row, col) {
-  // Returns: { hit, sunk, ship, alreadyShot }
   if (board.shots.some(s => s[0] === row && s[1] === col)) return { alreadyShot: true };
+  if (isBlocked(board, row, col)) return { alreadyShot: true };
   board.shots.push([row, col]);
   const shipId = board.grid[row][col];
   if (!shipId) return { hit: false, sunk: false };
@@ -98,16 +256,15 @@ function isWon(board) {
   return board.ships.every(s => s.sunk);
 }
 
-function randomPlaceAll(board) {
-  // Clear board first
-  board.grid = Array.from({ length: GRID }, () => Array(GRID).fill(null));
+function randomPlaceAll(board, shipDefs) {
+  resetBoardGrid(board);
   board.ships = [];
-  for (const def of SHIPS_DEF) {
-    let placed = false;
-    while (!placed) {
+  for (const def of shipDefs) {
+    let placed = false, tries = 0;
+    while (!placed && tries++ < 2000) {
       const horiz = Math.random() < 0.5;
-      const row = Math.floor(Math.random() * (horiz ? GRID : GRID - def.size + 1));
-      const col = Math.floor(Math.random() * (horiz ? GRID - def.size + 1 : GRID));
+      const row = Math.floor(Math.random() * (horiz ? board.rows : board.rows - def.size + 1));
+      const col = Math.floor(Math.random() * (horiz ? board.cols - def.size + 1 : board.cols));
       if (canPlaceShip(board, def, row, col, horiz)) {
         placeShip(board, def, row, col, horiz);
         placed = true;
@@ -121,68 +278,70 @@ class AI {
   constructor(difficulty) {
     this.difficulty = difficulty;
     this.shotHistory = new Set();
-    this.hits = [];          // unprocessed hits
-    this.huntTargets = [];   // cells to try in hunt mode
+    this.hits = [];
+    this.huntTargets = [];
   }
 
   getShot(board) {
-    if (this.difficulty === 'easy') return this._randomShot();
+    if (this.difficulty === 'easy') return this._randomShot(board);
     if (this.difficulty === 'hard') return this._probabilityShot(board);
-    return this._huntShot();
+    return this._huntShot(board);
   }
 
-  _key(r, c) { return r * 10 + c; }
-  _valid(r, c) { return r >= 0 && r < GRID && c >= 0 && c < GRID && !this.shotHistory.has(this._key(r, c)); }
+  _key(r, c) { return r * 100 + c; }
 
-  _randomShot() {
+  _valid(r, c, board) {
+    return r >= 0 && r < board.rows
+        && c >= 0 && c < board.cols
+        && !this.shotHistory.has(this._key(r, c))
+        && !isBlocked(board, r, c);
+  }
+
+  _randomShot(board) {
     const avail = [];
-    for (let r = 0; r < GRID; r++)
-      for (let c = 0; c < GRID; c++)
-        if (!this.shotHistory.has(this._key(r, c))) avail.push([r, c]);
+    for (let r = 0; r < board.rows; r++)
+      for (let c = 0; c < board.cols; c++)
+        if (this._valid(r, c, board)) avail.push([r, c]);
     if (avail.length === 0) return null;
     return avail[Math.floor(Math.random() * avail.length)];
   }
 
-  _huntShot() {
-    // If we have hunt targets, use them
+  _huntShot(board) {
     while (this.huntTargets.length > 0) {
       const [r, c] = this.huntTargets.shift();
-      if (this._valid(r, c)) return [r, c];
+      if (this._valid(r, c, board)) return [r, c];
     }
-    // Checkerboard pattern for efficiency
     const avail = [];
-    for (let r = 0; r < GRID; r++)
-      for (let c = (r % 2); c < GRID; c += 2)
-        if (!this.shotHistory.has(this._key(r, c))) avail.push([r, c]);
-    if (avail.length === 0) return this._randomShot();
+    for (let r = 0; r < board.rows; r++)
+      for (let c = (r % 2); c < board.cols; c += 2)
+        if (this._valid(r, c, board)) avail.push([r, c]);
+    if (avail.length === 0) return this._randomShot(board);
     return avail[Math.floor(Math.random() * avail.length)];
   }
 
   _probabilityShot(board) {
-    // Hunt mode if we have targets
     if (this.huntTargets.length > 0) {
       while (this.huntTargets.length > 0) {
         const [r, c] = this.huntTargets.shift();
-        if (this._valid(r, c)) return [r, c];
+        if (this._valid(r, c, board)) return [r, c];
       }
     }
 
-    // Build probability map
-    const prob = Array.from({ length: GRID }, () => Array(GRID).fill(0));
-    const remainingSizes = SHIPS_DEF
+    const prob = Array.from({ length: board.rows }, () => Array(board.cols).fill(0));
+    const remainingSizes = State.shipDefs
       .filter(def => !board.ships.find(s => s.id === def.id)?.sunk)
       .map(def => def.size);
 
     for (const size of remainingSizes) {
-      for (let r = 0; r < GRID; r++) {
-        for (let c = 0; c <= GRID - size; c++) {
+      for (let r = 0; r < board.rows; r++) {
+        for (let c = 0; c <= board.cols - size; c++) {
           if (this._canFit(board, r, c, true, size)) {
             for (let i = 0; i < size; i++) prob[r][c + i]++;
           }
         }
       }
-      for (let c = 0; c < GRID; c++) {
-        for (let r = 0; r <= GRID - size; r++) {
+      for (let c = 0; c < board.cols; c++) {
+        for (let r = 0; r <= board.rows - size; r++) {
           if (this._canFit(board, r, c, false, size)) {
             for (let i = 0; i < size; i++) prob[r + i][c]++;
           }
@@ -190,24 +349,26 @@ class AI {
       }
     }
 
-    // Zero out already shot cells
     for (const [r, c] of board.shots) prob[r][c] = 0;
 
     let best = -1, bestCells = [];
-    for (let r = 0; r < GRID; r++)
-      for (let c = 0; c < GRID; c++)
+    for (let r = 0; r < board.rows; r++)
+      for (let c = 0; c < board.cols; c++)
         if (prob[r][c] > best) { best = prob[r][c]; bestCells = [[r, c]]; }
         else if (prob[r][c] === best) bestCells.push([r, c]);
 
-    return bestCells[Math.floor(Math.random() * bestCells.length)];
+    return bestCells.length
+      ? bestCells[Math.floor(Math.random() * bestCells.length)]
+      : this._randomShot(board);
   }
 
   _canFit(board, r, c, horiz, size) {
     for (let i = 0; i < size; i++) {
       const row = horiz ? r : r + i;
       const col = horiz ? c + i : c;
-      if (row >= GRID || col >= GRID) return false;
-      if (board.shots.some(s => s[0] === row && s[1] === col && board.grid[row][col] === null)) return false;
+      if (row >= board.rows || col >= board.cols) return false;
+      if (isBlocked(board, row, col)) return false;
+      if (board.shots.some(s => s[0] === row && s[1] === col) && board.grid[row][col] === null) return false;
     }
     return true;
   }
@@ -215,32 +376,25 @@ class AI {
   recordResult(row, col, result) {
     this.shotHistory.add(this._key(row, col));
     if (result.sunk) {
-      // Clear hunt targets related to this ship
       this.huntTargets = [];
+      this.hits = [];
     } else if (result.hit) {
-      // Add adjacent cells as targets
-      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-      // If we already have hits forming a line, prioritize that direction
       if (this.hits.length > 0) {
         const [pr, pc] = this.hits[this.hits.length - 1];
         const dr = row - pr, dc = col - pc;
         if (dr !== 0 || dc !== 0) {
-          // Extend line
-          if (this._valid(row + dr, col + dc)) this.huntTargets.unshift([row + dr, col + dc]);
-          if (this._valid(pr - dr, pc - dc)) this.huntTargets.push([pr - dr, pc - dc]);
+          this.huntTargets.unshift([row + dr, col + dc]);
+          this.huntTargets.push([pr - dr, pc - dc]);
         }
       }
-      for (const [dr, dc] of dirs) {
-        if (this._valid(row + dr, col + dc)) this.huntTargets.push([row + dr, col + dc]);
-      }
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      for (const [dr, dc] of dirs) this.huntTargets.push([row + dr, col + dc]);
       this.hits.push([row, col]);
     }
   }
 }
 
 // ===== NETWORK =====
-// P2P networking via PeerJS — no server required for game data.
-// PeerJS uses a free public broker for WebRTC signaling only.
 const PEER_PREFIX = 'battleships-v1-';
 
 class Network {
@@ -258,7 +412,6 @@ class Network {
     return c;
   }
 
-  // Create a hosted room. Resolves with the 6-char display code.
   host(name) {
     this._myName = name;
     const code = this._genCode();
@@ -271,9 +424,12 @@ class Network {
           this.conn = conn;
           conn.on('open', () => {
             this._setupConn(conn);
-            // Tell joiner their player index and the host's name
-            conn.send({ type: 'room_joined', playerIndex: 1, opponentName: name });
-            // Notify local app that opponent connected
+            conn.send({
+              type: 'room_joined',
+              playerIndex: 1,
+              opponentName: name,
+              mapId: State.map ? State.map.id : 'open-sea',
+            });
             if (this.onMessage) this.onMessage({
               type: 'opponent_joined',
               opponentName: conn.metadata?.name || 'Spiller 2',
@@ -289,7 +445,6 @@ class Network {
     });
   }
 
-  // Join a hosted room by 6-char code.
   join(code, name) {
     this._myName = name;
     return new Promise((resolve, reject) => {
@@ -360,7 +515,6 @@ const SFX = {
   cannon() {
     this._play(ctx => {
       const t = ctx.currentTime;
-      // Low boom
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.frequency.setValueAtTime(90, t);
@@ -369,7 +523,6 @@ const SFX = {
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
       osc.connect(g); g.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.25);
-      // Crack
       const src = ctx.createBufferSource();
       src.buffer = this._noise(0.12);
       const ng = ctx.createGain();
@@ -474,35 +627,50 @@ function addShipClasses(cell, ship, row, col) {
 }
 
 function renderBoard(container, board, opts = {}) {
-  const { interactive = false, showShips = false, onShot, previewRow, previewCol, previewHoriz, previewSize, previewValid } = opts;
+  const { rows, cols } = board;
+  const {
+    interactive = false, showShips = false, onShot,
+    previewRow, previewCol, previewHoriz, previewSize, previewValid,
+  } = opts;
   container.innerHTML = '';
 
-  // Build 11x11 grid (label row + label col + 10x10 cells)
+  // Dynamic grid layout — set inline so variable board sizes work
+  container.style.gridTemplateColumns = `var(--board-label) repeat(${cols}, var(--cell-size))`;
+  container.style.gridTemplateRows    = `var(--board-label) repeat(${rows}, var(--cell-size))`;
+  container.dataset.cols = cols;
+  container.dataset.rows = rows;
+
   // Corner
   const corner = document.createElement('div');
   corner.className = 'board-label';
   container.appendChild(corner);
 
-  // Column labels (A-J)
-  for (let c = 0; c < GRID; c++) {
+  // Column labels (A–N)
+  for (let c = 0; c < cols; c++) {
     const lbl = document.createElement('div');
     lbl.className = 'board-label';
-    lbl.textContent = COLS[c];
+    lbl.textContent = COLS_ALL[c];
     container.appendChild(lbl);
   }
 
-  for (let r = 0; r < GRID; r++) {
-    // Row label
+  for (let r = 0; r < rows; r++) {
     const rowLbl = document.createElement('div');
     rowLbl.className = 'board-label';
     rowLbl.textContent = r + 1;
     container.appendChild(rowLbl);
 
-    for (let c = 0; c < GRID; c++) {
+    for (let c = 0; c < cols; c++) {
       const cell = document.createElement('div');
       cell.className = 'cell';
       cell.dataset.row = r;
       cell.dataset.col = c;
+
+      // Island / blocked cell
+      if (board.grid[r][c] === 'blocked') {
+        cell.classList.add('blocked');
+        container.appendChild(cell);
+        continue;
+      }
 
       const shipId = board.grid[r][c];
       const shot = board.shots.find(s => s[0] === r && s[1] === c);
@@ -514,7 +682,6 @@ function renderBoard(container, board, opts = {}) {
           const ship = board.ships.find(s => s.id === shipId);
           const sunk = ship?.sunk;
           cell.classList.add(sunk ? 'sunk' : 'hit');
-          // Show ship shape on own board (showShips) or when sunk (revealed to attacker)
           if (ship && (showShips || sunk)) addShipClasses(cell, ship, r, c);
           marker.textContent = '✕';
         } else {
@@ -565,10 +732,8 @@ function renderPlacementBoard() {
     previewValid: State._prevValid,
     onShot: (r, c) => App.placementClick(r, c),
   });
-  // No event listeners here — they are set up once in setupPlacementListeners()
 }
 
-// Called once per placement phase. AbortController ensures old listeners are removed before new ones are added.
 let _placementAbort = null;
 function setupPlacementListeners() {
   if (_placementAbort) _placementAbort.abort();
@@ -579,12 +744,12 @@ function setupPlacementListeners() {
   container.addEventListener('mouseover', (e) => {
     const cell = e.target.closest('.cell');
     if (!cell || !State.placingShip) return;
+    if (cell.classList.contains('blocked')) return;
     const r = parseInt(cell.dataset.row);
     const c = parseInt(cell.dataset.col);
     if (r === State._prevRow && c === State._prevCol) return;
     const board = State.players[State.placing].board;
-    const def = SHIPS_DEF.find(d => d.id === State.placingShip.id);
-    // Temporarily exclude the ship's own cells so canPlaceShip works for re-placement
+    const def = State.shipDefs.find(d => d.id === State.placingShip.id);
     const savedCells = [];
     for (const [rr, cc] of (board.ships.find(s => s.id === def.id)?.cells || [])) {
       savedCells.push([rr, cc, board.grid[rr][cc]]);
@@ -605,11 +770,10 @@ function setupPlacementListeners() {
   }, { signal });
 }
 
-// Only updates CSS classes on existing cells — no DOM rebuild.
 function updatePlacementPreview() {
   const container = el('placement-board');
   const ship = State.placingShip;
-  container.querySelectorAll('.cell').forEach(cell => {
+  container.querySelectorAll('.cell:not(.blocked)').forEach(cell => {
     cell.classList.remove('ship-preview', 'ship-invalid');
     if (State._prevRow === undefined || !ship) return;
     const r = parseInt(cell.dataset.row);
@@ -631,7 +795,7 @@ function renderShipList() {
   const board = State.players[State.placing].board;
   const placedIds = board.ships.map(s => s.id);
 
-  for (const def of SHIPS_DEF) {
+  for (const def of State.shipDefs) {
     const placed = placedIds.includes(def.id);
     const selected = State.placingShip?.id === def.id;
 
@@ -639,7 +803,7 @@ function renderShipList() {
     item.className = `ship-item ${placed ? 'placed' : ''} ${selected ? 'selected' : ''}`;
 
     const preview = document.createElement('div');
-    preview.className = 'ship-preview';
+    preview.className = 'ship-preview-strip';
     for (let i = 0; i < def.size; i++) {
       const c = document.createElement('div');
       c.className = 'ship-cell-preview';
@@ -656,10 +820,10 @@ function renderShipList() {
     if (!placed) {
       item.addEventListener('click', () => {
         State.placingShip = def;
-        State._prevRow = undefined; // clear stale preview position
+        State._prevRow = undefined;
         renderShipList();
         renderPlacementBoard();
-        setupPlacementListeners(); // board DOM was rebuilt, re-attach
+        setupPlacementListeners();
       });
     }
 
@@ -669,38 +833,34 @@ function renderShipList() {
 
 function updatePlacementDoneBtn() {
   const board = State.players[State.placing].board;
-  el('placement-done-btn').disabled = board.ships.length < SHIPS_DEF.length;
+  el('placement-done-btn').disabled = board.ships.length < State.shipDefs.length;
 }
 
 // ===== BATTLE UI =====
 function renderBattleScreen() {
   const me = State.players[State.current];
   const opp = State.players[1 - State.current];
-  const myName = me.name;
-  const oppName = opp.name;
 
-  el('turn-indicator').textContent = `⚔️ ${myName}s tur`;
-  el('attack-board-label').textContent = `${oppName}s hav`;
-  el('defend-board-label').textContent = `${myName}s hav`;
+  el('turn-indicator').textContent = `⚔️ ${me.name}s tur`;
+  el('attack-board-label').textContent = `${opp.name}s hav`;
+  el('defend-board-label').textContent = `${me.name}s hav`;
 
   const oppSunk = opp.board.ships.filter(s => s.sunk).length;
-  const mySunk = me.board.ships.filter(s => s.sunk).length;
-  el('battle-stats').textContent = `Du: ${oppSunk}/${SHIPS_DEF.length} sænket | Modst.: ${mySunk}/${SHIPS_DEF.length} sænket`;
+  const mySunk  = me.board.ships.filter(s => s.sunk).length;
+  el('battle-stats').textContent =
+    `Du: ${oppSunk}/${State.shipDefs.length} sænket | Modst.: ${mySunk}/${State.shipDefs.length} sænket`;
 
-  // Render enemy board (interactive attack)
   renderBoard(el('enemy-board'), opp.board, {
     interactive: true,
     showShips: false,
     onShot: (r, c) => App.fireShot(r, c),
   });
 
-  // Render own board (defensive view, no interaction)
   renderBoard(el('own-board'), me.board, {
     interactive: false,
     showShips: true,
   });
 
-  // Mobile tabs
   const isMobile = window.innerWidth < 700;
   el('board-tabs').style.display = isMobile ? 'flex' : 'none';
   if (isMobile) {
@@ -712,24 +872,56 @@ function renderBattleScreen() {
   }
 }
 
+// ===== MAP SELECT UI =====
+function renderMapGrid() {
+  const container = el('map-grid');
+  container.innerHTML = '';
+  for (const map of MAPS) {
+    const card = document.createElement('div');
+    card.className = 'map-card';
+    card.onclick = () => App.mapSelected(map.id);
+
+    const preview = document.createElement('div');
+    preview.className = 'map-preview';
+    preview.style.gridTemplateColumns = `repeat(${map.cols}, 1fr)`;
+
+    const blockedSet = new Set(map.blocked.map(([r, c]) => `${r},${c}`));
+    for (let r = 0; r < map.rows; r++) {
+      for (let c = 0; c < map.cols; c++) {
+        const cell = document.createElement('div');
+        cell.className = blockedSet.has(`${r},${c}`) ? 'mp-blocked' : 'mp-water';
+        preview.appendChild(cell);
+      }
+    }
+
+    const info = document.createElement('div');
+    info.className = 'map-info';
+    info.innerHTML =
+      `<div class="map-name">${map.name}</div>` +
+      `<div class="map-size">${map.cols}×${map.rows} · ${map.ships.length} skibe</div>` +
+      `<div class="map-desc">${map.desc}</div>`;
+
+    card.appendChild(preview);
+    card.appendChild(info);
+    container.appendChild(card);
+  }
+}
+
 // ===== MAIN APP =====
 const App = {
   _deferredInstall: null,
 
   init() {
-    // PWA install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       App._deferredInstall = e;
       el('install-btn').classList.remove('hidden');
     });
 
-    // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 
-    // Version info
     fetch('version.json')
       .then(r => r.json())
       .then(v => {
@@ -739,35 +931,42 @@ const App = {
         });
         el('version-info').textContent = `${v.hash} · ${date}`;
       })
-      .catch(() => {}); // silently ignore if not present
+      .catch(() => {});
 
     showScreen('menu');
   },
 
   installPWA() {
-    if (App._deferredInstall) {
-      App._deferredInstall.prompt();
-    }
+    if (App._deferredInstall) App._deferredInstall.prompt();
   },
 
   showMenu() {
     net.disconnect();
     State.mode = null;
+    State.map = null;
+    State.shipDefs = [];
     showScreen('menu');
   },
 
   selectMode(mode) {
     State.mode = mode;
-    if (mode === 'online') {
+    renderMapGrid();
+    showScreen('mapselect');
+  },
+
+  mapSelected(mapId) {
+    State.map = MAPS.find(m => m.id === mapId);
+    State.shipDefs = [...State.map.ships];
+
+    if (State.mode === 'online') {
       const saved = localStorage.getItem('playerName') || '';
       el('online-name-create').value = saved;
       el('online-name-join').value = saved;
       showScreen('online-setup');
     } else {
-      // Show name entry
-      el('names-title').textContent = mode === 'ai' ? 'Dit navn' : 'Spillernavne';
-      el('name2-group').classList.toggle('hidden', mode === 'ai');
-      el('difficulty-group').classList.toggle('hidden', mode !== 'ai');
+      el('names-title').textContent = State.mode === 'ai' ? 'Dit navn' : 'Spillernavne';
+      el('name2-group').classList.toggle('hidden', State.mode === 'ai');
+      el('difficulty-group').classList.toggle('hidden', State.mode !== 'ai');
       const saved = localStorage.getItem('playerName') || '';
       el('name1').value = saved;
       el('name2').value = '';
@@ -780,6 +979,11 @@ const App = {
     }
   },
 
+  applyMap(mapId) {
+    State.map = MAPS.find(m => m.id === mapId) || MAPS[0];
+    State.shipDefs = [...State.map.ships];
+  },
+
   submitNames() {
     const n1 = el('name1').value.trim() || 'Spiller 1';
     const n2 = State.mode === 'local' ? (el('name2').value.trim() || 'Spiller 2') : 'Computer';
@@ -788,8 +992,8 @@ const App = {
 
     State.difficulty = diff;
     State.players = [
-      { name: n1, board: makeBoard() },
-      { name: n2, board: makeBoard() },
+      { name: n1, board: makeBoard(State.map) },
+      { name: n2, board: makeBoard(State.map) },
     ];
 
     if (State.mode === 'ai') {
@@ -825,26 +1029,23 @@ const App = {
     renderPlacementBoard();
     updatePlacementDoneBtn();
     showScreen('placement');
-    // Set up hover listeners once after screen is shown
     setupPlacementListeners();
   },
 
   toggleRotation() {
     State.horizontal = !State.horizontal;
     el('rotate-label').textContent = State.horizontal ? 'Vandret' : 'Lodret';
-    // Re-validate preview with new orientation and refresh board
     if (State._prevRow !== undefined && State.placingShip) {
       const board = State.players[State.placing].board;
-      const def = SHIPS_DEF.find(d => d.id === State.placingShip.id);
+      const def = State.shipDefs.find(d => d.id === State.placingShip.id);
       State._prevValid = canPlaceShip(board, def, State._prevRow, State._prevCol, State.horizontal);
     }
     renderPlacementBoard();
-    // Re-attach listeners since renderBoard rebuilt the DOM
     setupPlacementListeners();
   },
 
   randomPlacement() {
-    randomPlaceAll(State.players[State.placing].board);
+    randomPlaceAll(State.players[State.placing].board, State.shipDefs);
     State.placingShip = null;
     State._prevRow = undefined;
     renderShipList();
@@ -855,7 +1056,7 @@ const App = {
 
   clearPlacement() {
     const board = State.players[State.placing].board;
-    board.grid = Array.from({ length: GRID }, () => Array(GRID).fill(null));
+    resetBoardGrid(board);
     board.ships = [];
     State.placingShip = null;
     State._prevRow = undefined;
@@ -867,12 +1068,11 @@ const App = {
 
   placementClick(row, col) {
     if (!State.placingShip) {
-      // Clicking a placed ship picks it up for re-placement
       const board = State.players[State.placing].board;
       const shipId = board.grid[row][col];
-      if (shipId) {
+      if (shipId && shipId !== 'blocked') {
         removeShip(board, shipId);
-        State.placingShip = SHIPS_DEF.find(d => d.id === shipId);
+        State.placingShip = State.shipDefs.find(d => d.id === shipId);
         State._prevRow = undefined;
         renderShipList();
         renderPlacementBoard();
@@ -883,17 +1083,13 @@ const App = {
     }
 
     const board = State.players[State.placing].board;
-    const def = SHIPS_DEF.find(d => d.id === State.placingShip.id);
+    const def = State.shipDefs.find(d => d.id === State.placingShip.id);
 
-    // Remove old placement BEFORE canPlaceShip so own cells don't block re-placement
     if (board.ships.find(s => s.id === def.id)) {
       removeShip(board, def.id);
     }
 
-    if (!canPlaceShip(board, def, row, col, State.horizontal)) {
-      // Can't place here — put it back if it was on the board (shouldn't happen, but safe)
-      return;
-    }
+    if (!canPlaceShip(board, def, row, col, State.horizontal)) return;
 
     placeShip(board, def, row, col, State.horizontal);
     SFX.place();
@@ -907,13 +1103,11 @@ const App = {
 
   donePlacing() {
     if (State.mode === 'ai') {
-      // AI places ships too
-      randomPlaceAll(State.players[1].board);
+      randomPlaceAll(State.players[1].board, State.shipDefs);
       State.current = 0;
       App.startBattle();
     } else if (State.mode === 'local') {
       if (State.placing === 0) {
-        // Pass to player 2
         App.showPass(
           `Giv enheden til ${State.players[1].name}`,
           `${State.players[1].name} skal nu placere sine skibe.`,
@@ -923,7 +1117,6 @@ const App = {
           }
         );
       } else {
-        // Both placed, start battle
         State.current = 0;
         App.showPass(
           `${State.players[0].name}: Din tur!`,
@@ -932,7 +1125,6 @@ const App = {
         );
       }
     } else if (State.mode === 'online') {
-      // Send ships placed notification (not actual positions)
       net.relay({ type: 'ships_placed' });
       el('waiting-title').textContent = 'Venter på at modstander placerer skibe...';
       el('room-code-display').classList.add('hidden');
@@ -977,9 +1169,9 @@ const App = {
 
   fireShot(row, col) {
     const opp = State.players[1 - State.current];
-
     if (State.mode === 'online' && State.current !== State.online.myIndex) return;
     if (opp.board.shots.some(s => s[0] === row && s[1] === col)) return;
+    if (isBlocked(opp.board, row, col)) return;
 
     const result = shootAt(opp.board, row, col);
     if (result.alreadyShot) return;
@@ -992,9 +1184,9 @@ const App = {
   },
 
   processShotResult(row, col, result, opp) {
-    let msg = result.sunk  ? `💥 ${opp.name}s ${result.ship.name} er sænket!`
-            : result.hit   ? `🎯 Ramt!`
-                           : `💧 Forbi!`;
+    const msg = result.sunk ? `💥 ${opp.name}s ${result.ship.name} er sænket!`
+              : result.hit  ? `🎯 Ramt!`
+                            : `💧 Forbi!`;
 
     if (isWon(opp.board)) {
       renderBattleScreen();
@@ -1053,13 +1245,12 @@ const App = {
     State.current = 0;
     State.lastShot = { row, col, hit: result.hit, boardId: 'own-board' };
 
-    let msg = result.sunk  ? `💥 Computeren sænkede din ${result.ship.name}!`
-            : result.hit   ? `🎯 Computeren ramte!`
-                           : `💧 Computeren missede.`;
+    const msg = result.sunk ? `💥 Computeren sænkede din ${result.ship.name}!`
+              : result.hit  ? `🎯 Computeren ramte!`
+                            : `💧 Computeren missede.`;
 
     if (isWon(targetBoard)) {
       renderBattleScreen();
-      // Switch to defend tab on mobile so player sees the hit
       if (window.innerWidth < 700) App.battleTab('defend');
       flashLastShot();
       setTimeout(() => {
@@ -1071,7 +1262,6 @@ const App = {
 
     renderBattleScreen();
     flashLastShot();
-    // Switch to defend tab on mobile so player sees the AI's shot
     if (window.innerWidth < 700) {
       App.battleTab('defend');
       setTimeout(() => App.battleTab('attack'), 1600);
@@ -1086,12 +1276,11 @@ const App = {
 
   gameOver(winnerIndex) {
     const winner = State.players[winnerIndex];
-    const loser = State.players[1 - winnerIndex];
+    const loser  = State.players[1 - winnerIndex];
     el('winner-emoji').textContent = winnerIndex === 0 ? '🏆' : (State.mode === 'ai' ? '🤖' : '🏆');
     el('winner-text').textContent = `${winner.name} vandt!`;
     el('gameover-detail').textContent = `${loser.name}s flåde er sænket.`;
 
-    // Show mini boards
     const gb = el('gameover-boards');
     gb.innerHTML = '';
     for (let i = 0; i < 2; i++) {
@@ -1112,15 +1301,16 @@ const App = {
   },
 
   playAgain() {
-    if (State.mode === 'ai') {
-      App.selectMode('ai');
-    } else if (State.mode === 'local') {
-      // Reset boards and start placement again
-      State.players.forEach(p => { p.board = makeBoard(); });
+    if (State.mode === 'local') {
+      State.players.forEach(p => { p.board = makeBoard(State.map); });
       State.placing = 0;
       App.startPlacement();
     } else if (State.mode === 'online') {
       App.showMenu();
+    } else {
+      // AI or other: back to map select
+      renderMapGrid();
+      showScreen('mapselect');
     }
   },
 
@@ -1142,8 +1332,8 @@ const App = {
     el('online-error').classList.add('hidden');
     net.onMessage = App.handleNetworkMessage;
     State.players = [
-      { name, board: makeBoard() },
-      { name: '...', board: makeBoard() },
+      { name, board: makeBoard(State.map) },
+      { name: '...', board: makeBoard(State.map) },
     ];
     State.online.myIndex = 0;
     el('waiting-title').textContent = 'Opretter rum...';
@@ -1179,7 +1369,6 @@ const App = {
     showScreen('waiting');
     try {
       await net.join(code, name);
-      // room_joined message arrives from host and starts placement
     } catch (err) {
       net.disconnect();
       el('online-error').textContent = err.message;
@@ -1199,12 +1388,12 @@ const App = {
   handleNetworkMessage(msg) {
     switch (msg.type) {
       case 'room_joined': {
-        // Received by the joiner from the host
+        App.applyMap(msg.mapId);
         State.online.myIndex = 1;
         const myName = net._myName || 'Spiller 2';
         State.players = [
-          { name: msg.opponentName, board: makeBoard() },
-          { name: myName, board: makeBoard() },
+          { name: msg.opponentName, board: makeBoard(State.map) },
+          { name: myName,           board: makeBoard(State.map) },
         ];
         State.placing = 1;
         State._myShipsPlaced = false;
@@ -1213,7 +1402,6 @@ const App = {
         break;
       }
       case 'opponent_joined': {
-        // Fired locally by Network.host() when joiner connects
         State.players[1].name = msg.opponentName;
         el('waiting-title').textContent = `${msg.opponentName} er klar!`;
         State.placing = 0;
@@ -1243,7 +1431,6 @@ const App = {
         break;
       }
       case 'shot': {
-        // Opponent shot at MY board
         const myBoard = State.players[State.online.myIndex].board;
         const result = shootAt(myBoard, data.row, data.col);
         State.lastHit = result.hit ? [data.row, data.col] : null;
@@ -1254,14 +1441,13 @@ const App = {
           return;
         }
 
-        // It's now my turn
         State.current = State.online.myIndex;
         renderBattleScreen();
 
         let msg = '';
-        if (result.sunk) msg = `💥 Modstanderen sænkede din ${result.ship.name}!`;
+        if (result.sunk)    msg = `💥 Modstanderen sænkede din ${result.ship.name}!`;
         else if (result.hit) msg = `🎯 Modstanderen ramte dig!`;
-        else msg = `💧 Modstanderen missede!`;
+        else                 msg = `💧 Modstanderen missede!`;
         showMessage(msg + ' Din tur!', 3000);
         break;
       }
@@ -1269,7 +1455,6 @@ const App = {
   },
 
   startOnlineBattle() {
-    // Player 0 goes first
     State.current = 0;
     App.startBattle();
     if (State.online.myIndex !== 0) {
@@ -1294,7 +1479,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Handle resize for responsive battle board
 window.addEventListener('resize', () => {
   if (document.getElementById('screen-battle').classList.contains('active')) {
     renderBattleScreen();
