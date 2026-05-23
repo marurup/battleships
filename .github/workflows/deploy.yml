@@ -22,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Generate version info
+        run: |
+          echo "{\"hash\":\"$(git rev-parse --short HEAD)\",\"date\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"}" > public/version.json
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:

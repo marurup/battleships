@@ -726,8 +726,20 @@ const App = {
 
     // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     }
+
+    // Version info
+    fetch('version.json')
+      .then(r => r.json())
+      .then(v => {
+        const date = new Date(v.date).toLocaleString('da-DK', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+        el('version-info').textContent = `${v.hash} · ${date}`;
+      })
+      .catch(() => {}); // silently ignore if not present
 
     showScreen('menu');
   },

@@ -4,8 +4,8 @@
   "description": "Sænke Slagskibe - Battleships PWA",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "prestart": "node -e \"const{execSync:e,writeFileSync:w}=require('child_process'),fs=require('fs');try{const h=e('git rev-parse --short HEAD').toString().trim(),d=new Date().toISOString();w('public/version.json',JSON.stringify({hash:h,date:d}))}catch(_){}\"",
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2"
