@@ -253,7 +253,7 @@ function shootAt(board, row, col) {
 }
 
 function isWon(board) {
-  return board.ships.every(s => s.sunk);
+  return board.ships.length > 0 && board.ships.every(s => s.sunk);
 }
 
 function randomPlaceAll(board, shipDefs) {
@@ -950,20 +950,45 @@ const App = {
 
   selectMode(mode) {
     State.mode = mode;
+    if (mode === 'online') {
+      // Joiner never needs to pick a map — host sends it via room_joined.
+      // Show host/join screen first; host picks map when clicking "Opret rum".
+      const saved = localStorage.getItem('playerName') || '';
+      el('online-name-create').value = saved;
+      el('online-name-join').value = saved;
+      showScreen('online-setup');
+    } else {
+      State._mapContext = mode; // 'ai' or 'local'
+      renderMapGrid();
+      showScreen('mapselect');
+    }
+  },
+
+  // Called by "Opret rum" button — host picks map before the room is created.
+  showMapSelectForHost() {
+    State._mapContext = 'online-host';
     renderMapGrid();
     showScreen('mapselect');
+  },
+
+  // Back button on the map select screen.
+  _mapBack() {
+    if (State._mapContext === 'online-host') {
+      showScreen('online-setup');
+    } else {
+      App.showMenu();
+    }
   },
 
   mapSelected(mapId) {
     State.map = MAPS.find(m => m.id === mapId);
     State.shipDefs = [...State.map.ships];
 
-    if (State.mode === 'online') {
-      const saved = localStorage.getItem('playerName') || '';
-      el('online-name-create').value = saved;
-      el('online-name-join').value = saved;
-      showScreen('online-setup');
+    if (State._mapContext === 'online-host') {
+      // Proceed straight to room creation with the chosen map.
+      App.createRoom();
     } else {
+      // ai or local — show names screen.
       el('names-title').textContent = State.mode === 'ai' ? 'Dit navn' : 'Spillernavne';
       el('name2-group').classList.toggle('hidden', State.mode === 'ai');
       el('difficulty-group').classList.toggle('hidden', State.mode !== 'ai');
