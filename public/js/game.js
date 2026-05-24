@@ -838,10 +838,18 @@ function updatePlacementDoneBtn() {
 
 // ===== BATTLE UI =====
 function renderBattleScreen() {
-  const me = State.players[State.current];
-  const opp = State.players[1 - State.current];
+  // In online mode "me" is always the local player, not whoever's turn it is
+  const meIdx = State.mode === 'online' ? State.online.myIndex : State.current;
+  const me  = State.players[meIdx];
+  const opp = State.players[1 - meIdx];
 
-  el('turn-indicator').textContent = `⚔️ ${me.name}s tur`;
+  if (State.mode === 'online') {
+    el('turn-indicator').textContent = State.current === State.online.myIndex
+      ? '⚔️ Din tur' : `⏳ ${State.players[State.current].name}s tur...`;
+  } else {
+    el('turn-indicator').textContent = `⚔️ ${me.name}s tur`;
+  }
+
   el('attack-board-label').textContent = `${opp.name}s hav`;
   el('defend-board-label').textContent = `${me.name}s hav`;
 
@@ -850,8 +858,12 @@ function renderBattleScreen() {
   el('battle-stats').textContent =
     `Du: ${oppSunk}/${State.shipDefs.length} sænket | Modst.: ${mySunk}/${State.shipDefs.length} sænket`;
 
+  // Only allow clicking when it's my turn and I'm not waiting for a result
+  const canFire = State.mode !== 'online'
+    || (State.current === State.online.myIndex && !State._waitingForResult);
+
   renderBoard(el('enemy-board'), opp.board, {
-    interactive: true,
+    interactive: canFire,
     showShips: false,
     onShot: (r, c) => App.fireShot(r, c),
   });
@@ -1193,8 +1205,22 @@ const App = {
   },
 
   fireShot(row, col) {
+    if (State.mode === 'online') {
+      // Online: relay shot to opponent, wait for shot_result — don't process locally
+      if (State.current !== State.online.myIndex) return;
+      if (State._waitingForResult) return;
+      const opp = State.players[1 - State.online.myIndex];
+      if (opp.board.shots.some(s => s[0] === row && s[1] === col)) return;
+      if (isBlocked(opp.board, row, col)) return;
+      SFX.cannon();
+      net.relay({ type: 'shot', row, col });
+      State._waitingForResult = true;
+      renderBattleScreen();
+      return;
+    }
+
+    // Local / AI mode
     const opp = State.players[1 - State.current];
-    if (State.mode === 'online' && State.current !== State.online.myIndex) return;
     if (opp.board.shots.some(s => s[0] === row && s[1] === col)) return;
     if (isBlocked(opp.board, row, col)) return;
 
@@ -1202,8 +1228,6 @@ const App = {
     if (result.alreadyShot) return;
 
     SFX.cannon();
-    if (State.mode === 'online') net.relay({ type: 'shot', row, col });
-
     State.lastShot = { row, col, hit: result.hit, boardId: 'enemy-board' };
     App.processShotResult(row, col, result, opp);
   },
@@ -1245,15 +1269,7 @@ const App = {
             () => { renderBattleScreen(); showScreen('battle'); }
           );
         }, 1000);
-      } else if (State.mode === 'online') {
-        State.current = 1 - State.current;
-        renderBattleScreen();
-        if (State.current === State.online.myIndex) {
-          showMessage('Din tur! Vælg en celle at skyde på.', 3000);
-        } else {
-          showMessage(`${State.players[State.current].name}s tur...`, 60000);
-        }
-      }
+      // Online mode is handled by shot / shot_result relay messages
     }, 350);
   },
 
@@ -1455,25 +1471,115 @@ const App = {
         if (State._myShipsPlaced) App.startOnlineBattle();
         break;
       }
+
+      // Opponent shot at MY board — process and send result back
       case 'shot': {
         const myBoard = State.players[State.online.myIndex].board;
         const result = shootAt(myBoard, data.row, data.col);
-        State.lastHit = result.hit ? [data.row, data.col] : null;
+
+        // Reply with the outcome so the shooter can update their display
+        const reply = {
+          type: 'shot_result',
+          row: data.row, col: data.col,
+          hit: result.hit, sunk: result.sunk,
+          shipId: result.ship?.id || null,
+          shipName: result.ship?.name || null,
+          won: isWon(myBoard),
+        };
+        // When sunk, include full ship shape so attacker can render it
+        if (result.sunk && result.ship) {
+          reply.shipCells = result.ship.cells;
+          reply.shipSize  = result.ship.size;
+          reply.shipHoriz = result.ship.horiz;
+        }
+        net.relay(reply);
+
+        SFX.cannon();
+        State.lastShot = { row: data.row, col: data.col, hit: result.hit, boardId: 'own-board' };
 
         if (isWon(myBoard)) {
           renderBattleScreen();
-          setTimeout(() => App.gameOver(1 - State.online.myIndex), 400);
+          if (window.innerWidth < 700) App.battleTab('defend');
+          flashLastShot();
+          setTimeout(() => { SFX.sunk(); App.gameOver(1 - State.online.myIndex); }, 400);
           return;
         }
 
+        // It's now my turn
         State.current = State.online.myIndex;
         renderBattleScreen();
+        if (window.innerWidth < 700) {
+          App.battleTab('defend');
+          setTimeout(() => App.battleTab('attack'), 2000);
+        }
+        flashLastShot();
 
-        let msg = '';
-        if (result.sunk)    msg = `💥 Modstanderen sænkede din ${result.ship.name}!`;
-        else if (result.hit) msg = `🎯 Modstanderen ramte dig!`;
-        else                 msg = `💧 Modstanderen missede!`;
-        showMessage(msg + ' Din tur!', 3000);
+        setTimeout(() => {
+          if (result.sunk) SFX.sunk();
+          else if (result.hit) SFX.explosion();
+          else SFX.splash();
+          const msg = result.sunk ? `💥 Modstanderen sænkede din ${result.ship.name}!`
+                    : result.hit  ? `🎯 Modstanderen ramte dig!`
+                                  : `💧 Modstanderen missede!`;
+          showMessage(msg + ' Din tur!', 3000);
+        }, 350);
+        break;
+      }
+
+      // Result of MY shot against the opponent
+      case 'shot_result': {
+        State._waitingForResult = false;
+        const oppIdx = 1 - State.online.myIndex;
+        const opp = State.players[oppIdx];
+
+        // Update local copy of opponent's board with the result
+        opp.board.shots.push([data.row, data.col]);
+        if (data.hit && data.shipId) {
+          opp.board.grid[data.row][data.col] = data.shipId;
+          let ship = opp.board.ships.find(s => s.id === data.shipId);
+          if (!ship) {
+            ship = { id: data.shipId, name: data.shipName, size: 0,
+                     cells: [], hits: 0, sunk: false, horiz: true };
+            opp.board.ships.push(ship);
+          }
+          ship.hits++;
+          if (data.sunk && data.shipCells) {
+            ship.sunk  = true;
+            ship.cells = data.shipCells;
+            ship.size  = data.shipSize;
+            ship.horiz = data.shipHoriz;
+            for (const [r, c] of data.shipCells) opp.board.grid[r][c] = data.shipId;
+          } else {
+            ship.cells.push([data.row, data.col]);
+          }
+        }
+
+        State.lastShot = { row: data.row, col: data.col, hit: data.hit, boardId: 'enemy-board' };
+
+        if (data.won) {
+          renderBattleScreen();
+          flashLastShot();
+          setTimeout(() => {
+            if (data.sunk) SFX.sunk(); else SFX.explosion();
+            App.gameOver(State.online.myIndex);
+          }, 350);
+          break;
+        }
+
+        // Turn switches to opponent
+        State.current = 1 - State.online.myIndex;
+        renderBattleScreen();
+        flashLastShot();
+
+        setTimeout(() => {
+          if (data.sunk) SFX.sunk();
+          else if (data.hit) SFX.explosion();
+          else SFX.splash();
+          const msg = data.sunk ? `💥 ${opp.name}s ${data.shipName} er sænket!`
+                    : data.hit  ? `🎯 Ramt!`
+                                : `💧 Forbi!`;
+          showMessage(msg);
+        }, 350);
         break;
       }
     }
@@ -1481,6 +1587,7 @@ const App = {
 
   startOnlineBattle() {
     State.current = 0;
+    State._waitingForResult = false;
     App.startBattle();
     if (State.online.myIndex !== 0) {
       showMessage(`${State.players[0].name} starter. Vent på din tur...`, 5000);
