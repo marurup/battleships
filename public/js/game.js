@@ -854,13 +854,15 @@ function renderBattleScreen() {
 
   if (State.mode === 'online') {
     el('turn-indicator').textContent = State.current === State.online.myIndex
-      ? '⚔️ Din tur' : `⏳ ${State.players[State.current].name}s tur...`;
+      ? '⚔️ Din tur' : `⏳ Venter på ${State.players[State.current].name}...`;
+  } else if (State.mode === 'local') {
+    el('turn-indicator').textContent = `⚔️ ${me.name}, din tur!`;
   } else {
-    el('turn-indicator').textContent = `⚔️ ${me.name}s tur`;
+    el('turn-indicator').textContent = '⚔️ Din tur';
   }
 
   el('attack-board-label').textContent = `${opp.name}s hav`;
-  el('defend-board-label').textContent = `${me.name}s hav`;
+  el('defend-board-label').textContent = 'Dit hav';
 
   const oppSunk = opp.board.ships.filter(s => s.sunk).length;
   const mySunk  = me.board.ships.filter(s => s.sunk).length;
