@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battleships - Rendering Tests</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    html, body { overflow: auto; height: auto; background: #0a1628; }
+    .test-section { margin: 20px; padding: 16px; border: 1px solid #2a4060; border-radius: 8px; }
+    .test-section h3 { color: #e0f0ff; margin-bottom: 12px; text-align: left; text-transform: none; letter-spacing: 0; font-size: 16px; }
+    .test-result { font-size: 14px; margin: 8px 0; padding: 4px 8px; border-radius: 4px; }
+    .test-pass { color: #4caf50; }
+    .test-fail { color: #e53935; background: rgba(229,57,53,0.1); }
+    .test-boards { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; margin-top: 12px; }
+    .test-board-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .test-board-wrap h4 { color: #7fb3d3; font-size: 13px; }
+    .test-board { --cell-size: 32px; --board-label: 20px; }
+    #summary { font-size: 18px; font-weight: 700; padding: 16px 20px; }
+  </style>
+</head>
+<body>
+  <!-- Minimal DOM required by game.js init -->
+  <div id="app" style="position:static;overflow:visible;">
+    <div id="screen-menu" class="screen"></div>
+    <div id="screen-mapselect" class="screen"><div id="map-grid"></div></div>
+    <div id="screen-names" class="screen"></div>
+    <div id="screen-online-setup" class="screen">
+      <div id="online-create"></div><div id="online-join" class="hidden"></div>
+      <div id="online-error" class="hidden"></div>
+    </div>
+    <div id="screen-waiting" class="screen">
+      <div id="waiting-title"></div><div id="room-code-display" class="hidden"></div>
+      <div id="room-code-value"></div>
+    </div>
+    <div id="screen-pass" class="screen"><div id="pass-title"></div><div id="pass-message"></div></div>
+    <div id="screen-placement" class="screen">
+      <div id="placement-title"></div><div id="placement-hint"></div>
+      <div id="rotate-label"></div><div id="placement-board" class="board"></div>
+      <div id="ship-list"></div><button id="placement-done-btn"></button>
+      <button id="rotate-btn"></button>
+    </div>
+    <div id="screen-battle" class="screen">
+      <div id="turn-indicator"></div><div id="battle-stats"></div>
+      <div id="battle-boards">
+        <div id="board-tabs" class="board-tabs">
+          <button id="tab-attack" class="tab-btn active"></button>
+          <button id="tab-defend" class="tab-btn"></button>
+        </div>
+        <div id="section-attack"><h3 id="attack-board-label"></h3><div id="enemy-board" class="board board-attack"></div></div>
+        <div id="section-defend"><h3 id="defend-board-label"></h3><div id="own-board" class="board board-defend"></div></div>
+      </div>
+      <div id="battle-message" class="battle-message hidden"></div>
+    </div>
+    <div id="screen-gameover" class="screen">
+      <div id="winner-emoji"></div><div id="winner-text"></div>
+      <div id="gameover-detail"></div><div id="gameover-boards"></div>
+    </div>
+    <span id="install-btn" class="hidden"></span>
+    <span id="version-info"></span>
+    <input id="name1" type="text"><input id="name2" type="text">
+    <div id="name2-group"></div><div id="difficulty-group"></div><div id="names-title"></div>
+    <input id="online-name-create" type="text"><input id="online-name-join" type="text">
+    <input id="room-code-input" type="text">
+    <div id="tab-create"></div><div id="tab-join"></div>
+  </div>
+
+  <div id="test-output"></div>
+
+  <!-- Load game.js to get all functions and constants -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    const out = document.getElementById('test-output');
+    let tPass = 0, tFail = 0;
+
+    function section(title) {
+      const s = document.createElement('div');
+      s.className = 'test-section';
+      s.innerHTML = `<h3>${title}</h3>`;
+      out.appendChild(s);
+      return s;
+    }
+
+    function result(parent, pass, msg) {
+      const d = document.createElement('div');
+      d.className = `test-result ${pass ? 'test-pass' : 'test-fail'}`;
+      d.textContent = `${pass ? 'PASS' : 'FAIL'}: ${msg}`;
+      parent.appendChild(d);
+      if (pass) tPass++; else tFail++;
+    }
+
+    function addBoard(parent, label, board, opts = {}) {
+      const wrap = document.createElement('div');
+      wrap.className = 'test-board-wrap';
+      wrap.innerHTML = `<h4>${label}</h4>`;
+      const el = document.createElement('div');
+      el.className = 'board test-board';
+      renderBoard(el, board, opts);
+      wrap.appendChild(el);
+      parent.appendChild(wrap);
+      return el;
+    }
+
+    // ===== Test 1: Miss renders on empty board =====
+    {
+      const s = section('Test 1: Miss on enemy board (attacker view)');
+      const board = makeBoard(MAPS[0]);
+      board.shots.push([3, 3]);
+      // grid[3][3] stays null (miss)
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Enemy board after miss at D4', board, { showShips: false, interactive: false });
+
+      const cell = el.querySelector('[data-row="3"][data-col="3"]');
+      result(s, cell !== null, 'Cell D4 exists');
+      result(s, cell?.classList.contains('miss'), 'Cell D4 has "miss" class');
+      result(s, cell?.querySelector('.shot-marker')?.textContent === '○', 'Cell D4 shows ○ marker');
+    }
+
+    // ===== Test 2: Hit renders on enemy board =====
+    {
+      const s = section('Test 2: Hit on enemy board (attacker view)');
+      const board = makeBoard(MAPS[0]);
+      board.shots.push([2, 5]);
+      board.grid[2][5] = 'cruiser';
+      board.ships.push({ id: 'cruiser', name: 'Krydser', size: 3, cells: [[2,5]], hits: 1, sunk: false, horiz: true });
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Enemy board after hit at F3', board, { showShips: false, interactive: false });
+
+      const cell = el.querySelector('[data-row="2"][data-col="5"]');
+      result(s, cell !== null, 'Cell F3 exists');
+      result(s, cell?.classList.contains('hit'), 'Cell F3 has "hit" class');
+      result(s, cell?.querySelector('.shot-marker')?.textContent === '✕', 'Cell F3 shows ✕ marker');
+    }
+
+    // ===== Test 3: Sunk ship renders with ship graphics =====
+    {
+      const s = section('Test 3: Sunk ship on enemy board (attacker view)');
+      const board = makeBoard(MAPS[0]);
+      board.shots.push([5, 5]);
+      board.shots.push([5, 6]);
+      board.grid[5][5] = 'destroyer';
+      board.grid[5][6] = 'destroyer';
+      board.ships.push({ id: 'destroyer', name: 'Destroyer', size: 2, cells: [[5,5],[5,6]], hits: 2, sunk: true, horiz: true });
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Enemy board - destroyer sunk at F6-G6', board, { showShips: false, interactive: false });
+
+      const cell1 = el.querySelector('[data-row="5"][data-col="5"]');
+      const cell2 = el.querySelector('[data-row="5"][data-col="6"]');
+      result(s, cell1?.classList.contains('sunk'), 'Cell F6 has "sunk" class');
+      result(s, cell2?.classList.contains('sunk'), 'Cell G6 has "sunk" class');
+      result(s, cell1?.classList.contains('ship'), 'Cell F6 has "ship" class (sunk ships show graphics)');
+      result(s, cell1?.classList.contains('ship-bow'), 'Cell F6 is bow');
+      result(s, cell2?.classList.contains('ship-stern'), 'Cell G6 is stern');
+    }
+
+    // ===== Test 4: Own board shows ships + incoming shots =====
+    {
+      const s = section('Test 4: Own board with ships and incoming shots');
+      const board = makeBoard(MAPS[0]);
+      placeShip(board, SHIP_TYPES.cruiser, 2, 3, true);
+      placeShip(board, SHIP_TYPES.destroyer, 7, 0, false);
+      shootAt(board, 2, 3); // hit cruiser
+      shootAt(board, 5, 5); // miss
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Own board - cruiser hit, miss at F6', board, { showShips: true, interactive: false });
+
+      const hitCell = el.querySelector('[data-row="2"][data-col="3"]');
+      const missCell = el.querySelector('[data-row="5"][data-col="5"]');
+      const shipCell = el.querySelector('[data-row="2"][data-col="4"]'); // cruiser, not hit
+      const destroyerCell = el.querySelector('[data-row="7"][data-col="0"]');
+      result(s, hitCell?.classList.contains('hit'), 'Hit cell has "hit" class');
+      result(s, hitCell?.querySelector('.shot-marker')?.textContent === '✕', 'Hit shows ✕');
+      result(s, missCell?.classList.contains('miss'), 'Miss cell has "miss" class');
+      result(s, missCell?.querySelector('.shot-marker')?.textContent === '○', 'Miss shows ○');
+      result(s, shipCell?.classList.contains('ship'), 'Unhit ship cell shows ship');
+      result(s, destroyerCell?.classList.contains('ship'), 'Destroyer visible');
+    }
+
+    // ===== Test 5: Blocked cells =====
+    {
+      const s = section('Test 5: Blocked cells (arctic map)');
+      const board = makeBoard(MAPS.find(m => m.id === 'arctic'));
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Arctic map - blocked corners + center', board, { showShips: false, interactive: false });
+
+      const blocked = el.querySelector('[data-row="0"][data-col="0"]');
+      const open = el.querySelector('[data-row="3"][data-col="3"]');
+      result(s, blocked?.classList.contains('blocked'), 'Corner cell is blocked');
+      result(s, !open?.classList.contains('blocked'), 'Open cell is not blocked');
+    }
+
+    // ===== Test 6: Full online protocol simulation with rendering =====
+    {
+      const s = section('Test 6: Online protocol - attacker board after 3 shots (hit, miss, sunk)');
+
+      // Simulate attacker's local copy of opponent's board
+      const oppBoard = makeBoard(MAPS[0]);
+
+      // Shot 1: hit at (1,1) on cruiser
+      oppBoard.shots.push([1, 1]);
+      oppBoard.grid[1][1] = 'cruiser';
+      oppBoard.ships.push({ id: 'cruiser', name: 'Krydser', size: 3, cells: [[1,1]], hits: 1, sunk: false, horiz: true });
+
+      // Shot 2: miss at (5,5)
+      oppBoard.shots.push([5, 5]);
+
+      // Shot 3: hit + sunk destroyer at (8,3)-(8,4)
+      oppBoard.shots.push([8, 3]);
+      oppBoard.shots.push([8, 4]);
+      oppBoard.grid[8][3] = 'destroyer';
+      oppBoard.grid[8][4] = 'destroyer';
+      oppBoard.ships.push({ id: 'destroyer', name: 'Destroyer', size: 2, cells: [[8,3],[8,4]], hits: 2, sunk: true, horiz: true });
+
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Attacker view - mixed shots', oppBoard, { showShips: false, interactive: false });
+
+      const hit = el.querySelector('[data-row="1"][data-col="1"]');
+      const miss = el.querySelector('[data-row="5"][data-col="5"]');
+      const sunk1 = el.querySelector('[data-row="8"][data-col="3"]');
+      const sunk2 = el.querySelector('[data-row="8"][data-col="4"]');
+      const empty = el.querySelector('[data-row="0"][data-col="0"]');
+
+      result(s, hit?.classList.contains('hit'), 'Hit cell has "hit" class');
+      result(s, miss?.classList.contains('miss'), 'Miss cell has "miss" class');
+      result(s, sunk1?.classList.contains('sunk'), 'Sunk cell 1 has "sunk" class');
+      result(s, sunk2?.classList.contains('sunk'), 'Sunk cell 2 has "sunk" class');
+      result(s, sunk1?.classList.contains('ship-bow'), 'Sunk cell 1 is bow');
+      result(s, sunk2?.classList.contains('ship-stern'), 'Sunk cell 2 is stern');
+      result(s, !empty?.classList.contains('hit') && !empty?.classList.contains('miss'), 'Empty cell has no shot class');
+    }
+
+    // ===== Test 7: Interactive board has click handlers =====
+    {
+      const s = section('Test 7: Interactive enemy board - clickable cells');
+      const board = makeBoard(MAPS[0]);
+      board.shots.push([0, 0]); // already shot
+
+      let clickedCell = null;
+      const boards = document.createElement('div');
+      boards.className = 'test-boards';
+      s.appendChild(boards);
+      const el = addBoard(boards, 'Interactive board', board, {
+        interactive: true,
+        showShips: false,
+        onShot: (r, c) => { clickedCell = [r, c]; },
+      });
+
+      // Click an unshot cell
+      const cell = el.querySelector('[data-row="5"][data-col="5"]');
+      cell?.click();
+      result(s, clickedCell !== null, 'Click handler fires on unshot cell');
+      result(s, clickedCell?.[0] === 5 && clickedCell?.[1] === 5, 'Click reports correct coordinates');
+
+      // Click an already-shot cell
+      clickedCell = null;
+      const shotCell = el.querySelector('[data-row="0"][data-col="0"]');
+      shotCell?.click();
+      result(s, clickedCell === null, 'Click handler does NOT fire on already-shot cell');
+    }
+
+    // ===== Summary =====
+    const summary = document.createElement('div');
+    summary.id = 'summary';
+    summary.style.color = tFail > 0 ? '#e53935' : '#4caf50';
+    summary.textContent = `${tPass} passed, ${tFail} failed`;
+    out.insertBefore(summary, out.firstChild);
+  </script>
+</body>
+</html>
