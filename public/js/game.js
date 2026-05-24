@@ -1269,6 +1269,7 @@ const App = {
             () => { renderBattleScreen(); showScreen('battle'); }
           );
         }, 1000);
+      }
       // Online mode is handled by shot / shot_result relay messages
     }, 350);
   },
