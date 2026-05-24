@@ -628,6 +628,57 @@ function addShipClasses(cell, ship, row, col) {
   if (idx === 0) cell.classList.add('ship-bow');
   else if (idx === ship.cells.length - 1) cell.classList.add('ship-stern');
   else cell.classList.add('ship-mid');
+  addShipDetail(cell, ship, idx);
+}
+
+function addShipDetail(cell, ship, idx) {
+  const last = ship.cells.length - 1;
+
+  // Carrier: runway stripe on every cell
+  if (ship.id === 'carrier') {
+    const rw = document.createElement('div');
+    rw.className = 'sd sd-runway';
+    cell.appendChild(rw);
+  }
+
+  // Pick detail type based on ship + position
+  let cls = null;
+  switch (ship.id) {
+    case 'dreadnought':
+      if (idx === 0 || idx === 4)      cls = 'sd-turret';
+      else if (idx === 2)              cls = 'sd-bridge';
+      else if (idx === 1 || idx === 3) cls = 'sd-turret-sm';
+      break;
+    case 'carrier':
+      if (idx === 1)                   cls = 'sd-tower';
+      break;
+    case 'battleship':
+      if (idx === 0 || idx === 2)      cls = 'sd-turret';
+      else if (idx === 1)              cls = 'sd-bridge';
+      break;
+    case 'cruiser':
+      if (idx === 0)                   cls = 'sd-turret';
+      else if (idx === 1)              cls = 'sd-bridge';
+      else if (idx === last)           cls = 'sd-turret-sm';
+      break;
+    case 'submarine':
+      if (idx === 1)                   cls = 'sd-conning';
+      break;
+    case 'destroyer':
+      if (idx === 0)                   cls = 'sd-turret-sm';
+      else                             cls = 'sd-bridge-sm';
+      break;
+    case 'frigate':
+      if (idx === 0)                   cls = 'sd-bridge-sm';
+      else                             cls = 'sd-helipad';
+      break;
+  }
+
+  if (cls) {
+    const d = document.createElement('div');
+    d.className = `sd ${cls}`;
+    cell.appendChild(d);
+  }
 }
 
 function renderBoard(container, board, opts = {}) {
